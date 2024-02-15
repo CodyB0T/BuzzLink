@@ -1,10 +1,9 @@
-# writer_demo.py Demo pogram for rendering arbitrary fonts to an SSD1306 OLED display.
-# Illustrates a minimal example. Requires ssd1306_setup.py which contains
-# wiring details.
+# ssd1306_setup.py Demo pogram for rendering arbitrary fonts to an SSD1306 OLED display.
+# Device initialisation
 
 # The MIT License (MIT)
 #
-# Copyright (c) 2018 Peter Hinch
+# Copyright (c) 2016 Peter Hinch
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,29 +27,43 @@
 # https://learn.adafruit.com/monochrome-oled-breakouts/wiring-128x32-spi-oled-display
 # https://www.proto-pic.co.uk/monochrome-128x32-oled-graphic-display.html
 
-# V0.3 13th Aug 2018
+# V0.3 12th Aug 2018
 
 import machine
-from ssd1306_setup import WIDTH, HEIGHT, setup
-from writer import Writer
+from ssd1306 import SSD1306_SPI, SSD1306_I2C
 
-# Font
-import font10
+WIDTH = const(128)
+HEIGHT = const(64)
 
-
-def test(use_spi=False):
-    ssd = setup(use_spi)  # Create a display instance
-    rhs = WIDTH - 1
-    ssd.line(rhs - 20, 0, rhs, 20, 1)
-    square_side = 10
-    ssd.fill_rect(rhs - square_side, 0, square_side, square_side, 1)
-
-    wri = Writer(ssd, font10)
-    Writer.set_textpos(ssd, 0, 0)  # verbose = False to suppress console output
-    wri.printstring("Sunday\n")
-    wri.printstring("12 Aug 2018\n")
-    wri.printstring("10.30am")
-    ssd.show()
-
-
-test()
+def setup(use_spi=False, soft=True):
+    if use_spi:
+        # Pyb   SSD
+        # 3v3   Vin
+        # Gnd   Gnd
+        # X1    DC
+        # X2    CS
+        # X3    Rst
+        # X6    CLK
+        # X8    DATA
+        pdc = machine.Pin('X1', machine.Pin.OUT_PP)
+        pcs = machine.Pin('X2', machine.Pin.OUT_PP)
+        prst = machine.Pin('X3', machine.Pin.OUT_PP)
+        if soft:
+            spi = machine.SPI(sck=machine.Pin('X6'), mosi=machine.Pin('X8'), miso=machine.Pin('X7'))
+        else:
+            spi = machine.SPI(1)
+        ssd = SSD1306_SPI(WIDTH, HEIGHT, spi, pdc, prst, pcs)
+    else:  # I2C
+        # Pyb   SSD
+        # 3v3   Vin
+        # Gnd   Gnd
+        # Y9    CLK
+        # Y10   DATA
+        if soft:
+            pscl = machine.Pin(22, machine.Pin.OPEN_DRAIN)
+            psda = machine.Pin(21, machine.Pin.OPEN_DRAIN)
+            i2c = machine.I2C(scl=pscl, sda=psda)
+        else:
+            i2c = machine.I2C(2)
+        ssd = SSD1306_I2C(WIDTH, HEIGHT, i2c)
+    return ssd
